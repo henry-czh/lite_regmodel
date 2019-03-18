@@ -1,0 +1,7 @@
+#!/bin/bash
+gcc -fPIC  -shared -o libdpi.so \
+    uvm_dpi.cc \
+    -I/mnt/d/tools/EDA/INCISIV131S013/tools/inca/include
+    #uvm_regex.cc \
+    #uvm_hdl.c \
+    #uvm_svcmd_dpi.c
