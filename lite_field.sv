@@ -1,7 +1,7 @@
 
 class lite_field;
-    logic [31:0] mirror_value;
-    logic [31:0] desire_value;
+    local logic [31:0] mirror_value;
+    local logic [31:0] desire_value;
     local logic [31:0] update_value;
 
     local string m_fname;
@@ -38,12 +38,12 @@ class lite_field;
         m_individually_accessible = individually_accessible;
     endfunction
 
-    function mirror(lite_reg_data_t write_data);
-        this.desire_value = write_data;
+    function lite_reg_data_t get_mirror();
+        return mirror_value;
     endfunction
 
-    function desire(lite_reg_data_t write_data);
-        this.desire_value = write_data;
+    function void get_desire(output lite_reg_data_t data);
+         data = this.desire_value;
     endfunction
 
     function void bkdr_rd(input string hdl_path);
@@ -57,7 +57,10 @@ class lite_field;
     endfunction
 
     function void bkdr_wr(input string hdl_path,input lite_reg_data_t value);
-        void'(uvm_hdl_deposit(hdl_path,value));
+        string full_path;
+        full_path={hdl_path,".",m_fname};
+        $display(full_path);
+        void'(uvm_hdl_deposit(full_path,value));
         mirror_value=value;
     endfunction
 
