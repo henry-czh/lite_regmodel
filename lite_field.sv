@@ -42,8 +42,12 @@ class lite_field;
         return mirror_value;
     endfunction
 
-    function void get_desire(output lite_reg_data_t data);
-         data = this.desire_value;
+    function void update_mirror(input lite_reg_data_t data);
+        this.mirror_value=data;
+    endfunction
+
+    function lite_reg_data_t get_desire();
+         return desire_value;
     endfunction
 
     function void bkdr_rd(input string hdl_path);
