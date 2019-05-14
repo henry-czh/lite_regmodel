@@ -15,6 +15,33 @@ class lite_reg;
         this.m_addr = addr;
     endfunction
 
+    task fwrite(input lite_reg_data_t value);
+        lite_reg_data_t field_value;
+
+        foreach (m_fields[i]) begin
+            field_value=value >> m_fields[i].m_lsd;
+            m_fields[i].force_wr(m_hdl_path,field_value); 
+        end
+        read(FRONTDOOR,value);
+        foreach (m_fields[i]) begin
+            m_fields[i].release_wr(m_hdl_path); 
+        end
+
+        $display("LITE_INFO @ %0tns : \"%s\" read access is successfully!",$time,m_name);
+    endtask
+        
+    task wread(input lite_reg_data_t value);
+        lite_reg_data_t field_value;
+        string full_path;
+
+        foreach (m_fields[i]) begin
+            full_path={m_hdl_path,".",m_fields[i].m_fname};
+            field_value=(value >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size));
+            adaptor[0].wread(full_path,field_value);
+        end
+
+    endtask
+        
     task read(input lite_reg_access_t access_method,output lite_reg_data_t value);
         string access_method_s;
         
@@ -22,7 +49,6 @@ class lite_reg;
             access_method_s="FRONTDOOR";
             adaptor[0].bus2reg(m_addr,ftdr_data);
             foreach (m_fields[i]) begin
-                //$display("ftdr_data is %h",ftdr_data);
                 m_fields[i].update_mirror((ftdr_data >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
             end
         end

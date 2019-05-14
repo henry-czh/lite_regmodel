@@ -4,7 +4,7 @@ class lite_field;
     local logic [31:0] desire_value;
     local logic [31:0] update_value;
 
-    local string m_fname;
+    string m_fname;
 
     bit [31:0]              m_size;
     int                     m_lsd;
@@ -99,6 +99,19 @@ class lite_field;
             $display("LITE_ERROR @ %0tns : %s compare failed!",$time,m_fname);
             $display("\t\tdesire_value is \'h%h ;mirror value is 'h%h",this.desire_value,this.mirror_value);
         end
+    endfunction
+
+    function void force_wr(input string hdl_path,input lite_reg_data_t value);
+        string full_path;
+        full_path={hdl_path,".",m_fname};
+        void'(uvm_hdl_force(full_path,value));
+        desire_value=value & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_size));
+    endfunction
+
+    function void release_wr(input string hdl_path);
+        string full_path;
+        full_path={hdl_path,".",m_fname};
+        void'(uvm_hdl_release(full_path));
     endfunction
 
     function void bkdr_wr(input string hdl_path,input lite_reg_data_t value);
