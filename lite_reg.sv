@@ -22,8 +22,8 @@ class lite_reg;
             access_method_s="FRONTDOOR";
             adaptor[0].bus2reg(m_addr,ftdr_data);
             foreach (m_fields[i]) begin
-                m_fields[i].update_mirror(ftdr_data >> m_fields[i].m_lsd);
-               //$display("%d :update mirror value is %h",i,ftdr_data >> m_fields[i].m_lsd);
+                //$display("ftdr_data is %h",ftdr_data);
+                m_fields[i].update_mirror((ftdr_data >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
             end
         end
         else begin                //backdoor access
@@ -35,27 +35,32 @@ class lite_reg;
 
         value=0;
         foreach (m_fields[i]) begin
-           //$display("%d :field value is %h",i,m_fields[i].get_mirror);
-           //$display("%d :field lsd is %h",i,m_fields[i].m_lsd);
            value = value + (m_fields[i].get_mirror << m_fields[i].m_lsd); 
-           //$display("%d :comb value is %h",i,value);
         end
 
-        $display("%s : %s read value is %h",m_name,access_method_s,value);
+        $display("LITE_INFO @%0tns [%s] : The register \"%s\"  read value is 'h%h",$time,access_method_s,m_name,value);
 
     endtask
 
     task write(input lite_reg_access_t access_method,input lite_reg_data_t value);
         lite_reg_data_t field_value;
+        string access_method_s;
 
-        if(access_method==FRONTDOOR)   //frontdoor access
-            ;
-        else begin               //backdoor access
+        if(access_method==FRONTDOOR) begin  //frontdoor access
+            access_method_s="FRONTDOOR";
+            adaptor[0].reg2bus(m_addr,value);
             foreach (m_fields[i]) begin
-                field_value=value >> m_fields[i].m_lsd;
-                m_fields[i].bkdr_wr(m_hdl_path,value); 
+                m_fields[i].update_desire((value >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
             end
         end
+        else begin               //backdoor access
+            access_method_s="BACKDOOR";
+            foreach (m_fields[i]) begin
+                field_value=value >> m_fields[i].m_lsd;
+                m_fields[i].bkdr_wr(m_hdl_path,field_value); 
+            end
+        end
+        $display("LITE_INFO @%0tns [%s] : The register \"%s\"  write value is 'h%h",$time,access_method_s,m_name,value);
     endtask
     
     function new(string name="lite_reg",logic [127:0] reg_width);

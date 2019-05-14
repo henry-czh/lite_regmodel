@@ -29,10 +29,12 @@ def gen_reg(output_file,reg_info):
             lsd=value["bits"].split(":")
             if len(lsd)==1:
                 lsd=lsd[0]
+                size=1
             else:
+                size=str(int(lsd[0])-int(lsd[1])+1)
                 lsd=lsd[1]
-            output_file.write('\t\t%s.configure(32,%s,"%s",0,\'h%s,1,0,0);\n' % 
-            (value["fields"],lsd,value["access"],value["reset"].split("x")[1]))
+            output_file.write('\t\t%s.configure(%s,%s,"%s",0,\'h%s,1,0,0);\n' % 
+            (value["fields"],size,lsd,value["access"],value["reset"].split("x")[1]))
             output_file.write('\t\tadd_field(%s);\n' % (value["fields"]))
         output_file.write('\tendfunction\n')
         output_file.write('\n')
@@ -43,13 +45,13 @@ def deal_xls(sheet):
     book=xlrd.open_workbook(sys.argv[1])
     page=book.sheet_by_index(sheet)
     
-    module_info = page.col_values(1)[0:5]
+    module_info = page.col_values(1)[0:6]
 
-    i=6
+    i=7
     reg_info=[]
-    for item in page.col_values(5)[6:]:
+    for item in page.col_values(5)[7:]:
         if page.col_values(0)[i]!='':
-            if i!=6:
+            if i!=7:
                 reg_item["fields"]=field_info
                 reg_info.append(reg_item)
             field_info=[]
@@ -82,10 +84,10 @@ def gen_regmodel(output_file,module_info):
 class %s_regmodel extends lite_regmodel;
 
     //add adaptor
-    dut_adaptor adaptor;
+    %s_adaptor adaptor;
 
     //virtual interface
-    virtual apb_if avif;
+    virtual %s_if avif;
 
     function new(string name="%s_regmodel",virtual interface apb_if avif);
         adaptor=new("adaptor");
@@ -93,7 +95,7 @@ class %s_regmodel extends lite_regmodel;
     endfunction
 
     '''
-    s=s % (module_info[0],module_info[0])
+    s=s % (module_info[0],module_info[4],module_info[4],module_info[0])
     output_file.write(s)
 
     for item in reg_info:
@@ -106,8 +108,7 @@ class %s_regmodel extends lite_regmodel;
     for item in reg_info:
         output_file.write('\t\t%s=new("%s");\n' % (item["regname"],item["regname"]))
         output_file.write('\t\t%s.build();\n' % (item["regname"]))
-        print module_info
-        output_file.write('\t\t%s.configure("%s.%s",\'h%s);\n' % (item["regname"],module_info[4],item["regname"],item["offset"].split("x")[1]))
+        output_file.write('\t\t%s.configure("%s",\'h%s);\n' % (item["regname"],module_info[5],item["offset"].split("x")[1]))
         output_file.write('\t\t%s.adaptor.push_back(adaptor);\n' % (item["regname"]))
         output_file.write('\t\tadd_reg(%s);\n' % (item["regname"]))
         output_file.write('\n')
@@ -121,4 +122,5 @@ if __name__=='__main__':
     output_file=open('%s_regmodel.sv' % module_info[1],'w')
     gen_reg(output_file,reg_info)
     gen_regmodel(output_file,module_info)
+    print "The file \"%s_regmodel.sv\" generat Successfully!" % (module_info[1])
     output_file.close()
