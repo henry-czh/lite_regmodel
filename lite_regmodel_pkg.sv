@@ -8,4 +8,7 @@ package lite_regmodel;
     `include "lite_field.sv"
     `include "lite_reg.sv"
     `include "lite_regmodel.sv"
+    `include "lite_reset_check_tc.sv"
+    `include "lite_hdl_path_check_tc.sv"
+    `include "lite_access_check_tc.sv"
 endpackage

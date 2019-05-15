@@ -15,15 +15,79 @@ class lite_reg;
         this.m_addr = addr;
     endfunction
 
-    task fwrite(input lite_reg_data_t value);
-        lite_reg_data_t field_value;
+    task access_check();
+        lite_reg_data_t field_value,ftdr_value;
 
         foreach (m_fields[i]) begin
+            if(m_fields[i].m_access=="RW") begin
+                //write frontdoor
+                field_value=(~m_fields[i].mirror_value)<< m_fields[i].m_lsd;
+                adaptor[0].reg2bus(m_addr,field_value);
+                for(int j=0;j<=i;j++) begin
+                    m_fields[j].update_desire((field_value >> m_fields[j].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[j].m_size)));
+                end
+                //read backdoor
+                #1;
+                m_fields[i].bkdr_rd(m_hdl_path); 
+
+                //write backdoor
+                field_value=~(m_fields[i].mirror_value);
+                m_fields[i].bkdr_wr(m_hdl_path,field_value); 
+                //read frontdoor
+                adaptor[0].bus2reg(m_addr,ftdr_data);
+                m_fields[i].update_mirror((ftdr_data >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
+            end
+            if(m_fields[i].m_access=="RO") begin
+                //write backdoor
+                field_value=~(m_fields[i].mirror_value);
+                m_fields[i].force_wr(m_hdl_path,field_value); 
+                //read frontdoor and check value
+                adaptor[0].bus2reg(m_addr,ftdr_data);
+                m_fields[i].update_mirror((ftdr_data >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
+                //release
+                m_fields[i].release_wr(m_hdl_path); 
+            end
+            if(m_fields[i].m_access=="WO") begin
+                string full_path;
+
+                foreach (m_fields[i]) begin
+                    //write frontdoor
+                    field_value=(~m_fields[i].mirror_value)<< m_fields[i].m_lsd;
+                    adaptor[0].reg2bus(m_addr,field_value);
+                    for(int j=0;j<=i;j++) begin
+                        m_fields[j].update_desire((field_value >> m_fields[j].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[j].m_size)));
+                    end
+                    //read backdoor
+                    full_path={m_hdl_path,".",m_fields[i].m_fname};
+                    adaptor[0].wread(full_path,field_value,0);
+                end
+            end
+            //...
+        end
+        $display("LITE_INFO @ %0tns : \"%s\" access check is successfully!",$time,m_name);
+    endtask
+
+    task reset_check();
+        foreach (m_fields[i])
+            m_fields[i].reset_check(m_hdl_path);
+    endtask
+
+    task hdl_check();
+        foreach (m_fields[i])
+            m_fields[i].hdl_check(m_hdl_path);
+    endtask
+
+    task fwrite(input lite_reg_data_t value);
+        lite_reg_data_t field_value,ftdr_value;
+
+        foreach (m_fields[i]) begin
+            //write backdoor
             field_value=value >> m_fields[i].m_lsd;
             m_fields[i].force_wr(m_hdl_path,field_value); 
-        end
-        read(FRONTDOOR,value);
-        foreach (m_fields[i]) begin
+            //read frontdoor and check value
+            adaptor[0].bus2reg(m_addr,ftdr_data);
+            m_fields[i].update_mirror((ftdr_data >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size)));
+            //release
             m_fields[i].release_wr(m_hdl_path); 
         end
 
@@ -37,7 +101,7 @@ class lite_reg;
         foreach (m_fields[i]) begin
             full_path={m_hdl_path,".",m_fields[i].m_fname};
             field_value=(value >> m_fields[i].m_lsd) & ({`LITE_REG_MAX_WIDTH{1'b1}} >> (32-m_fields[i].m_size));
-            adaptor[0].wread(full_path,field_value);
+            adaptor[0].wread(full_path,field_value,1);
         end
 
     endtask
@@ -53,6 +117,7 @@ class lite_reg;
             end
         end
         else begin                //backdoor access
+            #0.1;
             access_method_s="BACKDOOR";
             foreach (m_fields[i]) begin
                 m_fields[i].bkdr_rd(m_hdl_path); 
@@ -62,6 +127,7 @@ class lite_reg;
         value=0;
         foreach (m_fields[i]) begin
            value = value + (m_fields[i].get_mirror << m_fields[i].m_lsd); 
+            //$display("field %d is %h",i,m_fields[i].get_mirror);
         end
 
         $display("LITE_INFO @%0tns [%s] : The register \"%s\"  read value is 'h%h",$time,access_method_s,m_name,value);
@@ -81,6 +147,7 @@ class lite_reg;
         end
         else begin               //backdoor access
             access_method_s="BACKDOOR";
+            #0.1;
             foreach (m_fields[i]) begin
                 field_value=value >> m_fields[i].m_lsd;
                 m_fields[i].bkdr_wr(m_hdl_path,field_value); 

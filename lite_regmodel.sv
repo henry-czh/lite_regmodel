@@ -3,7 +3,7 @@ class lite_regmodel;
     function new(string name="");
     endfunction
 
-    protected lite_reg  m_regs[$];
+    lite_reg  m_regs[$];
 
     extern function void add_reg(lite_reg register);
 endclass

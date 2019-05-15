@@ -10,7 +10,7 @@ virtual class lite_adaptor;
     virtual task reg2bus(input lite_reg_data_t addr,input lite_reg_data_t value);
     endtask
 
-    task wread(string path,lite_reg_data_t value);
+    task wread(string path,lite_reg_data_t value,int display=1);
         lite_reg_data_t wait_data;
 
         void'(uvm_hdl_read(path,wait_data));
@@ -18,7 +18,8 @@ virtual class lite_adaptor;
             #period;
             void'(uvm_hdl_read(path,wait_data));
         end
-        $display("LITE_INFO @ %0tns : \"%s\" write access is successfully!",$time,path);
+        if(display)
+            $display("LITE_INFO @ %0tns : \"%s\" write access is successfully!",$time,path);
 
     endtask
 
